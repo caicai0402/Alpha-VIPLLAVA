@@ -66,12 +66,10 @@ class LlavaLlamaForCausalLM(LlamaForCausalLM, LlavaMetaForCausalLM):
         output_attentions: Optional[bool] = None,
         output_hidden_states: Optional[bool] = None,
         images: Optional[torch.FloatTensor] = None,
-        visual_prompt_alpha: Optional[torch.FloatTensor] = None,
+        visual_prompt_alphas: Optional[torch.FloatTensor] = None,
         image_sizes: Optional[List[List[int]]] = None,
         return_dict: Optional[bool] = None,
     ) -> Union[Tuple, CausalLMOutputWithPast]:
-        
-        print("\n\n vvvvvvvvvvvv", visual_prompt_alpha.shape, images.shape)
 
         if inputs_embeds is None:
             (
@@ -88,6 +86,7 @@ class LlavaLlamaForCausalLM(LlamaForCausalLM, LlavaMetaForCausalLM):
                 past_key_values,
                 labels,
                 images,
+                visual_prompt_alphas,
                 image_sizes
             )
 

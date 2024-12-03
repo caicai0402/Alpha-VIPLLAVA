@@ -951,9 +951,9 @@ class DataCollatorForSupervisedDataset(object):
         if 'visual_prompt_alpha' in instances[0]:
             visual_prompt_alphas = [instance['visual_prompt_alpha'] for instance in instances]
             if all(x is not None and x.shape == visual_prompt_alphas[0].shape for x in visual_prompt_alphas):
-                batch['visual_prompt_alpha'] = torch.stack(visual_prompt_alphas)
+                batch['visual_prompt_alphas'] = torch.stack(visual_prompt_alphas)
             else:
-                batch['visual_prompt_alpha'] = visual_prompt_alphas
+                batch['visual_prompt_alphas'] = visual_prompt_alphas
         return batch
 
 def make_supervised_data_module(tokenizer: transformers.PreTrainedTokenizer,
@@ -1171,8 +1171,6 @@ def train(attn_implementation=None):
     for names, p in model.named_parameters():
         if p.requires_grad:
             rank0_print(names, "requires_grad")
-
-    data_module["train_dataset"][8]
     
     if list(pathlib.Path(training_args.output_dir).glob("checkpoint-*")):
         trainer.train(resume_from_checkpoint=True)
