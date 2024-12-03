@@ -911,8 +911,6 @@ class LazySupervisedDataset(Dataset):
             data_dict['image'] = torch.zeros(3, crop_size['height'], crop_size['width'])
             data_dict['visual_prompt_alpha'] = torch.zeros(1, crop_size['height'], crop_size['width'])
 
-        import ipdb
-        ipdb.set_trace()
         return data_dict
 
 @dataclass
@@ -945,6 +943,10 @@ class DataCollatorForSupervisedDataset(object):
                 batch['images'] = torch.stack(images)
             else:
                 batch['images'] = images
+        
+        import ipdb
+        ipdb.set_trace()
+        exit()
 
         return batch
 
@@ -1163,9 +1165,6 @@ def train(attn_implementation=None):
     for names, p in model.named_parameters():
         if p.requires_grad:
             rank0_print(names, "requires_grad")
-
-    data_module["train_dataset"][8]
-    exit()
     
     if list(pathlib.Path(training_args.output_dir).glob("checkpoint-*")):
         trainer.train(resume_from_checkpoint=True)
