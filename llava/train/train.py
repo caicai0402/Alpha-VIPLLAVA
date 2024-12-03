@@ -859,15 +859,17 @@ class LazySupervisedDataset(Dataset):
             image_folder = self.data_args.image_folder
             processor = self.data_args.image_processor
             image = Image.open(os.path.join(image_folder, image_file)).convert('RGB')
+            visual_prompt_alpha = self.generate_rgb_diff(image, image)
             if type(sources[0]['id']) == str and sources[0]['id'].split('-')[0] in visual_prompt_config:
                 try:
                     original_image = copy.deepcopy(image)
                     image, conversation = vip_processor(sources[0], image, image_size_anchor = processor.crop_size['height'], data_args = self.data_args)
-                    visual_prompt_alpha = self.generate_rgb_diff(original_image, image)  # todo: pad this
+                    visual_prompt_alpha = self.generate_rgb_diff(original_image, image)
                 except:
                     print('Fail in ViP image processing...')
                     return self.__getitem__(random.randint(0, len(self.list_data_dict)-1))
                 sources[0]["conversations"] = conversation
+
             if self.data_args.image_aspect_ratio == 'pad':
                 def expand2square(pil_img, background_color):
                     width, height = pil_img.size
@@ -882,12 +884,14 @@ class LazySupervisedDataset(Dataset):
                         result.paste(pil_img, ((height - width) // 2, 0))
                         return result
                 image = expand2square(image, tuple(int(x*255) for x in processor.image_mean))
-                image = processor.preprocess(image, return_tensors='pt')['pixel_values'][0]
-                visual_prompt_alpha = expand2square(visual_prompt_alpha, tuple(int(x*255) for x in processor.image_mean))
-                visual_prompt_alpha = processor.preprocess(visual_prompt_alpha, return_tensors='pt')['pixel_values'][0]
-            else:
-                image = processor.preprocess(image, return_tensors='pt')['pixel_values'][0]
-                visual_prompt_alpha = processor.preprocess(visual_prompt_alpha, return_tensors='pt')['pixel_values'][0]
+                visual_prompt_alpha = expand2square(visual_prompt_alpha, (0))
+            
+            image = processor.preprocess(image, return_tensors='pt')['pixel_values'][0] # shape: (3, 336, 336)
+            visual_prompt_alpha = processor.preprocess(np.expand_dims(visual_prompt_alpha, axis=-1), # (500, 500) -> (500, 500, 1)
+                                                       do_convert_rgb=False,
+                                                       do_normalize=False,
+                                                       do_rescale=False,
+                                                       return_tensors='pt')['pixel_values'][0] # shape: (1, 336, 336)
             sources = preprocess_multimodal(
                 copy.deepcopy([e["conversations"] for e in sources]),
                 self.data_args)
@@ -909,7 +913,7 @@ class LazySupervisedDataset(Dataset):
             # image does not exist in the data, but the model is multimodal
             crop_size = self.data_args.image_processor.crop_size
             data_dict['image'] = torch.zeros(3, crop_size['height'], crop_size['width'])
-            data_dict['visual_prompt_alpha'] = torch.zeros(1, crop_size['height'], crop_size['width'])
+            data_dict['visual_prompt_alpha'] = torch.zeros(1, crop_size['height'], crop_size['width']) # shape: (1, 336, 336)
 
         return data_dict
 
@@ -943,11 +947,13 @@ class DataCollatorForSupervisedDataset(object):
                 batch['images'] = torch.stack(images)
             else:
                 batch['images'] = images
-        
-        import ipdb
-        ipdb.set_trace()
-        exit()
 
+        if 'visual_prompt_alpha' in instances[0]:
+            visual_prompt_alphas = [instance['visual_prompt_alpha'] for instance in instances]
+            if all(x is not None and x.shape == visual_prompt_alphas[0].shape for x in visual_prompt_alphas):
+                batch['visual_prompt_alpha'] = torch.stack(visual_prompt_alphas)
+            else:
+                batch['visual_prompt_alpha'] = visual_prompt_alphas
         return batch
 
 def make_supervised_data_module(tokenizer: transformers.PreTrainedTokenizer,
@@ -1165,6 +1171,8 @@ def train(attn_implementation=None):
     for names, p in model.named_parameters():
         if p.requires_grad:
             rank0_print(names, "requires_grad")
+
+    data_module["train_dataset"][8]
     
     if list(pathlib.Path(training_args.output_dir).glob("checkpoint-*")):
         trainer.train(resume_from_checkpoint=True)

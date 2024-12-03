@@ -113,8 +113,11 @@ class CustomizedCLIPVisionEmbeddings(nn.Module):
             )
         target_dtype = self.patch_embedding.weight.dtype
         patch_embeds = self.patch_embedding(pixel_values.to(dtype=target_dtype))  # shape = [*, width, grid, grid]
-        alpha_patch_embeds = self.alpha_patch_embedding(alpha_pixel_values.to(dtype=target_dtype))
-        patch_embeds = patch_embeds + alpha_patch_embeds
+
+        if alpha_pixel_values != None:
+            alpha_patch_embeds = self.alpha_patch_embedding(alpha_pixel_values.to(dtype=target_dtype))
+            patch_embeds = patch_embeds + alpha_patch_embeds
+ 
         patch_embeds = patch_embeds.flatten(2).transpose(1, 2)
 
         class_embeds = self.class_embedding.expand(batch_size, 1, -1)
@@ -159,7 +162,7 @@ class CLIPVisionTowerMultilayer(nn.Module):
         return image_features
 
     # @torch.no_grad()
-    def forward(self, images):
+    def forward(self, images, visual_prompt_alpha):
         if type(images) is list:
             image_features = []
             for image in images:
