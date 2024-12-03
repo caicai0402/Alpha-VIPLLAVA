@@ -883,8 +883,11 @@ class LazySupervisedDataset(Dataset):
                         return result
                 image = expand2square(image, tuple(int(x*255) for x in processor.image_mean))
                 image = processor.preprocess(image, return_tensors='pt')['pixel_values'][0]
+                visual_prompt_alpha = expand2square(visual_prompt_alpha, tuple(int(x*255) for x in processor.image_mean))
+                visual_prompt_alpha = processor.preprocess(visual_prompt_alpha, return_tensors='pt')['pixel_values'][0]
             else:
                 image = processor.preprocess(image, return_tensors='pt')['pixel_values'][0]
+                visual_prompt_alpha = processor.preprocess(visual_prompt_alpha, return_tensors='pt')['pixel_values'][0]
             sources = preprocess_multimodal(
                 copy.deepcopy([e["conversations"] for e in sources]),
                 self.data_args)
@@ -901,10 +904,12 @@ class LazySupervisedDataset(Dataset):
         # image exist in the data
         if 'image' in self.list_data_dict[i]:
             data_dict['image'] = image
+            data_dict['visual_prompt_alpha'] = visual_prompt_alpha
         elif self.data_args.is_multimodal:
             # image does not exist in the data, but the model is multimodal
             crop_size = self.data_args.image_processor.crop_size
             data_dict['image'] = torch.zeros(3, crop_size['height'], crop_size['width'])
+            data_dict['visual_prompt_alpha'] = torch.zeros(1, crop_size['height'], crop_size['width'])
 
         import ipdb
         ipdb.set_trace()
