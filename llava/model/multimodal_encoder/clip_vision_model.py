@@ -1,26 +1,16 @@
-# Copyright 2023 Cruise LLC
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-
+from typing import Any, Optional, Tuple, Union
+from dataclasses import dataclass
 import torch
 import torch.nn as nn
 
-from transformers import CLIPVisionModel, CLIPImageProcessor, CLIPVisionConfig
-from .clip_vision_model import AlphaCLIPVisionModel
+from transformers import CLIPVisionModel, CLIPVisionConfig
+from transformers.models.clip.modeling_clip import CLIPVisionTransformer
+from transformers.modeling_outputs import BaseModelOutputWithPooling
 
+# from transformers.models.clip.modeling_clip import CLIP_VISION_INPUTS_DOCSTRING
+# from transformers.utils import add_start_docstrings_to_model_forward, replace_return_docstrings
 
-class CustomizedCLIPVisionEmbeddings(nn.Module):
+class AlphaCLIPVisionEmbeddings(nn.Module):
     def __init__(self, config: CLIPVisionConfig):
         super().__init__()
         self.config = config
@@ -99,11 +89,10 @@ class CustomizedCLIPVisionEmbeddings(nn.Module):
             )
         target_dtype = self.patch_embedding.weight.dtype
         patch_embeds = self.patch_embedding(pixel_values.to(dtype=target_dtype))  # shape = [*, width, grid, grid]
-
         if alpha_pixel_values != None:
             alpha_patch_embeds = self.alpha_patch_embedding(alpha_pixel_values.to(dtype=target_dtype))
             patch_embeds = patch_embeds + alpha_patch_embeds
- 
+            
         patch_embeds = patch_embeds.flatten(2).transpose(1, 2)
 
         class_embeds = self.class_embedding.expand(batch_size, 1, -1)
@@ -114,72 +103,87 @@ class CustomizedCLIPVisionEmbeddings(nn.Module):
             embeddings = embeddings + self.position_embedding(self.position_ids)
         return embeddings
 
+class AlphaCLIPVisionTransformer(CLIPVisionTransformer):
+    def __init__(self, config: CLIPVisionConfig):
+        super().__init__(config)
+        self.embeddings = AlphaCLIPVisionEmbeddings(config)
 
-class CLIPVisionTowerMultilayer(nn.Module):
-    def __init__(self, vision_tower, args, delay_load=False):
-        super().__init__()
-        self.is_loaded = False
+    # @add_start_docstrings_to_model_forward(CLIP_VISION_INPUTS_DOCSTRING)
+    # @replace_return_docstrings(output_type=BaseModelOutputWithPooling, config_class=CLIPVisionConfig)
+    def forward(
+        self,
+        pixel_values: Optional[torch.FloatTensor] = None,
+        alpha_pixel_values: Optional[torch.FloatTensor] = None,
+        output_attentions: Optional[bool] = None,
+        output_hidden_states: Optional[bool] = None,
+        return_dict: Optional[bool] = None,
+        interpolate_pos_encoding: Optional[bool] = False,
+    ) -> Union[Tuple, BaseModelOutputWithPooling]:
+        r"""
+        Returns:
 
-        self.vision_tower_name = vision_tower
-        self.select_layer = args.mm_vision_select_layer
-        self.select_feature = getattr(args, 'mm_vision_select_feature', 'patch')
+        """
+        output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
+        output_hidden_states = (
+            output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
+        )
+        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
-        if not delay_load:
-            self.load_model()
-        else:
-            self.cfg_only = CLIPVisionConfig.from_pretrained('openai/clip-vit-large-patch14-336')
+        if pixel_values is None:
+            raise ValueError("You have to specify pixel_values")
 
-    def load_model(self):
-        self.image_processor = CLIPImageProcessor.from_pretrained('openai/clip-vit-large-patch14-336')
-        self.vision_tower = AlphaCLIPVisionModel.from_pretrained('openai/clip-vit-large-patch14-336')
-        # self.vision_tower.requires_grad_(False)
-        self.is_loaded = True
+        hidden_states = self.embeddings(pixel_values, alpha_pixel_values, interpolate_pos_encoding=interpolate_pos_encoding)
+        hidden_states = self.pre_layrnorm(hidden_states)
 
-    def feature_select(self, image_forward_outs):
-        image_features = [image_forward_outs['hidden_states'][index][:, 1:] for index in [-2, -5, -8, -11, 6]]
-        image_features = torch.cat(image_features, dim=-1)
-        return image_features
+        encoder_outputs = self.encoder(
+            inputs_embeds=hidden_states,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+        )
 
-    # @torch.no_grad()
-    def forward(self, images, visual_prompt_alphas=None):
-        if visual_prompt_alphas == "llava_arch prepare_inputs_labels_for_multimodal":
-            raise NotImplementedError("llava_arch prepare_inputs_labels_for_multimodal")
+        last_hidden_state = encoder_outputs[0]
+        pooled_output = last_hidden_state[:, 0, :]
+        pooled_output = self.post_layernorm(pooled_output)
+
+        if not return_dict:
+            return (last_hidden_state, pooled_output) + encoder_outputs[1:]
+
+        return BaseModelOutputWithPooling(
+            last_hidden_state=last_hidden_state,
+            pooler_output=pooled_output,
+            hidden_states=encoder_outputs.hidden_states,
+            attentions=encoder_outputs.attentions,
+        )
+
+class AlphaCLIPVisionModel(CLIPVisionModel):
+    def __init__(self, config: CLIPVisionConfig):
+        super().__init__(config)
+        self.vision_model = AlphaCLIPVisionTransformer(config)
+
+    # @add_start_docstrings_to_model_forward(CLIP_VISION_INPUTS_DOCSTRING)
+    # @replace_return_docstrings(output_type=BaseModelOutputWithPooling, config_class=CLIPVisionConfig)
+    def forward(
+        self,
+        pixel_values: Optional[torch.FloatTensor] = None,
+        alpha_pixel_values: torch.FloatTensor = None,
+        output_attentions: Optional[bool] = None,
+        output_hidden_states: Optional[bool] = None,
+        interpolate_pos_encoding: bool = False,
+        return_dict: Optional[bool] = None,
+    ) -> Union[Tuple, BaseModelOutputWithPooling]:
         
-        if type(images) is list:
-            image_features = []
-            for image in images:
-                image_forward_out = self.vision_tower(image.to(device=self.device, dtype=self.dtype).unsqueeze(0), output_hidden_states=True)
-                image_feature = self.feature_select(image_forward_out).to(image.dtype)
-                image_features.append(image_feature)
-        else:
-            image_forward_outs = self.vision_tower(images.to(device=self.device, dtype=self.dtype), visual_prompt_alphas.to(device=self.device, dtype=self.dtype), output_hidden_states=True)
-            image_features = self.feature_select(image_forward_outs).to(images.dtype)
+        import ipdb
+        ipdb.set_trace()
+        
+        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
-        return image_features
-
-    @property
-    def dummy_feature(self):
-        return torch.zeros(1, self.hidden_size, device=self.device, dtype=self.dtype)
-
-    @property
-    def dtype(self):
-        return self.vision_tower.dtype
-
-    @property
-    def device(self):
-        return self.vision_tower.device
-
-    @property
-    def config(self):
-        if self.is_loaded:
-            return self.vision_tower.config
-        else:
-            return self.cfg_only
-
-    @property
-    def hidden_size(self):
-        return self.config.hidden_size * 5
-
-    @property
-    def num_patches(self):
-        return (self.config.image_size // self.config.patch_size) ** 2
+        return self.vision_model(
+            pixel_values=pixel_values,
+            alpha_pixel_values=alpha_pixel_values,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+            interpolate_pos_encoding=interpolate_pos_encoding
+        )
+    

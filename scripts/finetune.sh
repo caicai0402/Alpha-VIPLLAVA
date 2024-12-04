@@ -6,8 +6,8 @@ MODEL=vip-llava-7b
 PROMPT_VERSION=llava_v1
 DATA_ROOT=./playground/data
 
-# deepspeed --master_port 12347 llava/train/train_mem.py \
-python3 llava/train/train_mem.py \
+# python3 llava/train/train_mem.py \
+deepspeed --master_port 12347 llava/train/train_mem.py \
     --deepspeed ./scripts/zero2.json \
     --model_name_or_path checkpoints/vip-llava-7b \
     --version $PROMPT_VERSION \
@@ -37,8 +37,7 @@ python3 llava/train/train_mem.py \
     --tf32 True \
     --model_max_length 2048 \
     --gradient_checkpointing True \
-    --dataloader_num_workers 1 \
+    --dataloader_num_workers 4 \
     --lazy_preprocess True \
+    --report_to wandb \
     --tune_vision_tower
-    # --report_to wandb \
-    
