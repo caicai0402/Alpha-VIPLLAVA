@@ -173,9 +173,6 @@ class AlphaCLIPVisionModel(CLIPVisionModel):
         return_dict: Optional[bool] = None,
     ) -> Union[Tuple, BaseModelOutputWithPooling]:
         
-        import ipdb
-        ipdb.set_trace()
-        
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
         return self.vision_model(
