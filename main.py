@@ -1,10 +1,30 @@
-from datasets import load_dataset
+from transformers import GenerationConfig
 
-dataset_name = "imdb"  # 替換成您想下載的數據集名稱
-dataset = load_dataset(dataset_name)
+# 创建一个 GenerationConfig 对象
+gen_config = GenerationConfig(
+    max_length=50,
+    do_sample=True,
+    temperature=0.7,
+    top_p=0.9,
+    num_return_sequences=3,
+    pad_token_id=0,
+    bos_token_id=1,
+    eos_token_id=2,
+)
 
-# 儲存到本地
-dataset.save_to_disk("./local_dataset")
+# 保存到指定路径
+gen_config.save_pretrained("./config")
+
+# 文件会保存为 ./config/generation_config.json
+
+
+# from datasets import load_dataset
+
+# dataset_name = "imdb"  # 替換成您想下載的數據集名稱
+# dataset = load_dataset(dataset_name)
+
+# # 儲存到本地
+# dataset.save_to_disk("./local_dataset")
 
 
 

@@ -108,6 +108,7 @@ class LlavaLlamaForCausalLM(LlamaForCausalLM, LlavaMetaForCausalLM):
         self,
         inputs: Optional[torch.Tensor] = None,
         images: Optional[torch.Tensor] = None,
+        visual_prompt_alphas: Optional[torch.FloatTensor] = None,
         image_sizes: Optional[torch.Tensor] = None,
         **kwargs,
     ) -> Union[GenerateOutput, torch.LongTensor]:
@@ -131,6 +132,7 @@ class LlavaLlamaForCausalLM(LlamaForCausalLM, LlavaMetaForCausalLM):
                 None,
                 None,
                 images,
+                visual_prompt_alphas,
                 image_sizes=image_sizes
             )
         else:
