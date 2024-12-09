@@ -2,9 +2,9 @@ from llava.model.builder import load_pretrained_model
 from llava.mm_utils import get_model_name_from_path
 from llava.eval.run_llava import eval_model
 
-model_path = "/home/caicai/vp/AlphaViP-LLaVA/checkpoints/vip-llava-7b"
+model_path = "/home/caicai/vp/AlphaViP-LLaVA/checkpoints/alpha-vip-llava-7b-2"
 prompt = "What is shown within the pointed region?"
-image_file = "./man-cross-street.jpg"
+image_file = "./playground/data/trash/man-cross-street.jpg"
 
 args = type('Args', (), {
     "model_path": model_path,
