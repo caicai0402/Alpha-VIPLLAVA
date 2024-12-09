@@ -20,7 +20,7 @@ deepspeed --master_port 12347 llava/train/train_mem.py \
     --mm_use_im_patch_token False \
     --image_aspect_ratio pad \
     --bf16 True \
-    --output_dir ./checkpoints/alpha-$MODEL \
+    --output_dir ./checkpoints/alpha-$MODEL-2 \
     --num_train_epochs 1 \
     --per_device_train_batch_size 16 \
     --per_device_eval_batch_size 4 \
@@ -40,4 +40,5 @@ deepspeed --master_port 12347 llava/train/train_mem.py \
     --dataloader_num_workers 4 \
     --lazy_preprocess True \
     --report_to wandb \
-    --tune_vision_tower
+    --tune_vision_tower \
+    --tune_mm_mlp_adapter

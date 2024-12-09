@@ -28,6 +28,9 @@ class CLIPVisionTowerMultilayer(nn.Module):
         self.select_layer = args.mm_vision_select_layer
         self.select_feature = getattr(args, 'mm_vision_select_feature', 'patch')
 
+        self.vision_tower = None
+
+        delay_load = False
         if not delay_load:
             self.load_model()
         else:
@@ -36,6 +39,8 @@ class CLIPVisionTowerMultilayer(nn.Module):
     def load_model(self):
         self.image_processor = CLIPImageProcessor.from_pretrained('openai/clip-vit-large-patch14-336')
         self.vision_tower = AlphaCLIPVisionModel.from_pretrained('openai/clip-vit-large-patch14-336')
+        
+        # print("\n\n\n", self.vision_tower.vision_model.embeddings.patch_embedding.weight)
         # self.vision_tower.requires_grad_(False)
         self.is_loaded = True
 
@@ -56,6 +61,8 @@ class CLIPVisionTowerMultilayer(nn.Module):
                 image_feature = self.feature_select(image_forward_out).to(image.dtype)
                 image_features.append(image_feature)
         else:
+            if visual_prompt_alphas is None:
+                visual_prompt_alphas = torch.zeros(images.size(0), 1, images.size(2), images.size(3))
             image_forward_outs = self.vision_tower(images.to(device=self.device, dtype=self.dtype), visual_prompt_alphas.to(device=self.device, dtype=self.dtype), output_hidden_states=True)
             image_features = self.feature_select(image_forward_outs).to(images.dtype)
 

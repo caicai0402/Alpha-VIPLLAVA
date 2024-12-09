@@ -1,0 +1,182 @@
+
+diff --git a/eval.py b/eval.py
+index 4d858c1..f94fa8c 100644
+--- a/eval.py
++++ b/eval.py
+@@ -1,10 +1,25 @@
++import numpy as np
++from PIL import Image
+ from llava.model.builder import load_pretrained_model
+ from llava.mm_utils import get_model_name_from_path
+ from llava.eval.run_llava import eval_model
+ 
+-model_path = "/home/caicai/vp/AlphaViP-LLaVA/checkpoints/vip-llava-7b"
++
++def generate_rgb_diff(image1, image2):
++    array1 = np.array(image1.convert("RGB"))
++    array2 = np.array(image2.convert("RGB"))
++    diff_mask = np.any(array1 != array2, axis=-1).astype(np.uint8)
++    return Image.fromarray(diff_mask * 255)
++
++model_path = "/home/caicai/vp/AlphaViP-LLaVA/checkpoints/alpha-vip-llava-7b-vision_tower-2"
+ prompt = "What is shown within the pointed region?"
+-image_file = "./man-cross-street.jpg"
++image_file = "/home/caicai/vp/AlphaViP-LLaVA/playground/data/trash/man-cross-street.jpg"
++image_file = "/home/caicai/vp/AlphaViP-LLaVA/playground/data/trash/two-cats3.jpg"
++
++# image_file1 = "/home/caicai/vp/AlphaViP-LLaVA/playground/data/two-cats1.jpg"
++# image_file2 = "/home/caicai/vp/AlphaViP-LLaVA/playground/data/two-cats3.jpg"
++# alpha = generate_rgb_diff(Image.open(image_file1), Image.open(image_file2))
++# alpha.save("alpha.jpg")
+ 
+ args = type('Args', (), {
+     "model_path": model_path,
+diff --git a/llava/eval/model_vqa_loader_vip.py b/llava/eval/model_vqa_loader_vip.py
+index 26fc13e..b203e12 100644
+--- a/llava/eval/model_vqa_loader_vip.py
++++ b/llava/eval/model_vqa_loader_vip.py
+@@ -96,6 +96,9 @@ def eval_model(args):
+         args.conv_mode = "llava_phi_3"
+     tokenizer, model, image_processor, context_len = load_pretrained_model(model_path, args.model_base, model_name)
+ 
++    import ipdb
++    ipdb.set_trace()
++
+     questions = json.load(open(os.path.expanduser(args.question_file)))
+     
+     questions = get_chunk(questions, args.num_chunks, args.chunk_idx)
+diff --git a/llava/eval/run_llava.py b/llava/eval/run_llava.py
+index 1db0e00..2bba321 100644
+--- a/llava/eval/run_llava.py
++++ b/llava/eval/run_llava.py
+@@ -30,7 +30,6 @@ def image_parser(args):
+     out = args.image_file.split(args.sep)
+     return out
+ 
+-
+ def load_image(image_file):
+     if image_file.startswith("http") or image_file.startswith("https"):
+         response = requests.get(image_file)
+@@ -39,7 +38,6 @@ def load_image(image_file):
+         image = Image.open(image_file).convert("RGB")
+     return image
+ 
+-
+ def load_images(image_files):
+     out = []
+     for image_file in image_files:
+@@ -47,7 +45,6 @@ def load_images(image_files):
+         out.append(image)
+     return out
+ 
+-
+ def eval_model(args):
+     # Model
+     disable_torch_init()
+@@ -100,6 +97,17 @@ def eval_model(args):
+         image_processor,
+         model.config
+     ).to(model.device, dtype=torch.float16)
++    
++    
++    visual_prompt_alphas = None
++    # import numpy as np
++    # alpha = Image.open("/home/caicai/vp/AlphaViP-LLaVA/playground/data/alpha.jpg").convert("RGB")
++    # visual_prompt_alpha = image_processor.preprocess(np.expand_dims(alpha, axis=-1),
++    #                                                    do_convert_rgb=False,
++    #                                                    do_normalize=False,
++    #                                                    do_rescale=False,
++    #                                                    return_tensors='pt')['pixel_values'][0]
++    # visual_prompt_alphas = torch.stack([visual_prompt_alpha], dim=0).to(model.device, dtype=torch.float16)
+ 
+     input_ids = (
+         tokenizer_image_token(prompt, tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt")
+@@ -115,6 +123,7 @@ def eval_model(args):
+         output_ids = model.generate(
+             input_ids,
+             images=images_tensor,
++            visual_prompt_alphas=visual_prompt_alphas,
+             do_sample=True if args.temperature > 0 else False,
+             temperature=args.temperature,
+             top_p=args.top_p,
+diff --git a/llava/model/builder.py b/llava/model/builder.py
+index 53a73e5..5eb7af7 100644
+--- a/llava/model/builder.py
++++ b/llava/model/builder.py
+@@ -108,6 +108,8 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
+                 tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
+                 model = LlavaLlamaForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, **kwargs)
+ 
++                import ipdb
++                ipdb.set_trace()
+     else:
+         # Load language model
+         if model_base is not None:
+@@ -144,6 +146,7 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
+         vision_tower = model.get_vision_tower()
+         if not vision_tower.is_loaded:
+             vision_tower.load_model()
++        
+         vision_tower.to(device=device, dtype=torch.float16)
+         image_processor = vision_tower.image_processor
+ 
+@@ -152,4 +155,4 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
+     else:
+         context_len = 2048
+ 
+-    return tokenizer, model, image_processor, context_len
++    return tokenizer, model, image_processor, context_len
+\ No newline at end of file
+diff --git a/llava/model/multimodal_encoder/clip_4layer_encoder.py b/llava/model/multimodal_encoder/clip_4layer_encoder.py
+index cd13988..c37d25f 100644
+--- a/llava/model/multimodal_encoder/clip_4layer_encoder.py
++++ b/llava/model/multimodal_encoder/clip_4layer_encoder.py
+@@ -28,6 +28,9 @@ class CLIPVisionTowerMultilayer(nn.Module):
+         self.select_layer = args.mm_vision_select_layer
+         self.select_feature = getattr(args, 'mm_vision_select_feature', 'patch')
+ 
++        self.vision_tower = None
++
++        delay_load = False
+         if not delay_load:
+             self.load_model()
+         else:
+@@ -36,6 +39,8 @@ class CLIPVisionTowerMultilayer(nn.Module):
+     def load_model(self):
+         self.image_processor = CLIPImageProcessor.from_pretrained('openai/clip-vit-large-patch14-336')
+         self.vision_tower = AlphaCLIPVisionModel.from_pretrained('openai/clip-vit-large-patch14-336')
++        
++        # print("\n\n\n", self.vision_tower.vision_model.embeddings.patch_embedding.weight)
+         # self.vision_tower.requires_grad_(False)
+         self.is_loaded = True
+ 
+@@ -56,6 +61,8 @@ class CLIPVisionTowerMultilayer(nn.Module):
+                 image_feature = self.feature_select(image_forward_out).to(image.dtype)
+                 image_features.append(image_feature)
+         else:
++            if visual_prompt_alphas is None:
++                visual_prompt_alphas = torch.zeros(images.size(0), 1, images.size(2), images.size(3))
+             image_forward_outs = self.vision_tower(images.to(device=self.device, dtype=self.dtype), visual_prompt_alphas.to(device=self.device, dtype=self.dtype), output_hidden_states=True)
+             image_features = self.feature_select(image_forward_outs).to(images.dtype)
+ 
+diff --git a/llava/model/multimodal_encoder/clip_vision_model.py b/llava/model/multimodal_encoder/clip_vision_model.py
+index 0c54ee9..ec33478 100644
+--- a/llava/model/multimodal_encoder/clip_vision_model.py
++++ b/llava/model/multimodal_encoder/clip_vision_model.py
+@@ -89,6 +89,7 @@ class AlphaCLIPVisionEmbeddings(nn.Module):
+             )
+         target_dtype = self.patch_embedding.weight.dtype
+         patch_embeds = self.patch_embedding(pixel_values.to(dtype=target_dtype))  # shape = [*, width, grid, grid]
++        
+         if alpha_pixel_values != None:
+             alpha_patch_embeds = self.alpha_patch_embedding(alpha_pixel_values.to(dtype=target_dtype))
+             patch_embeds = patch_embeds + alpha_patch_embeds
+@@ -182,5 +183,4 @@ class AlphaCLIPVisionModel(CLIPVisionModel):
+             output_hidden_states=output_hidden_states,
+             return_dict=return_dict,
+             interpolate_pos_encoding=interpolate_pos_encoding
+-        )
+-    
+\ No newline at end of file
++        )
+\ No newline at end of file

@@ -1123,14 +1123,14 @@ def train(attn_implementation=None):
         model.config.tokenizer_padding_side = tokenizer.padding_side
         model.config.tokenizer_model_max_length = tokenizer.model_max_length
 
+        model.requires_grad_(False)
+
         model.config.tune_vision_tower = training_args.tune_vision_tower = model_args.tune_vision_tower
         if model_args.tune_vision_tower:
-            model.requires_grad_(False)
             model.get_vision_tower().requires_grad_(True)
         
         model.config.tune_mm_mlp_adapter = training_args.tune_mm_mlp_adapter = model_args.tune_mm_mlp_adapter
         if model_args.tune_mm_mlp_adapter:
-            model.requires_grad_(False)
             for p in model.get_model().mm_projector.parameters():
                 p.requires_grad = True
 

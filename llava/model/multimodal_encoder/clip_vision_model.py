@@ -89,6 +89,7 @@ class AlphaCLIPVisionEmbeddings(nn.Module):
             )
         target_dtype = self.patch_embedding.weight.dtype
         patch_embeds = self.patch_embedding(pixel_values.to(dtype=target_dtype))  # shape = [*, width, grid, grid]
+        
         if alpha_pixel_values != None:
             alpha_patch_embeds = self.alpha_patch_embedding(alpha_pixel_values.to(dtype=target_dtype))
             patch_embeds = patch_embeds + alpha_patch_embeds
@@ -183,4 +184,3 @@ class AlphaCLIPVisionModel(CLIPVisionModel):
             return_dict=return_dict,
             interpolate_pos_encoding=interpolate_pos_encoding
         )
-    

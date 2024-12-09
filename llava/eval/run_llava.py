@@ -30,7 +30,6 @@ def image_parser(args):
     out = args.image_file.split(args.sep)
     return out
 
-
 def load_image(image_file):
     if image_file.startswith("http") or image_file.startswith("https"):
         response = requests.get(image_file)
@@ -39,7 +38,6 @@ def load_image(image_file):
         image = Image.open(image_file).convert("RGB")
     return image
 
-
 def load_images(image_files):
     out = []
     for image_file in image_files:
@@ -47,10 +45,9 @@ def load_images(image_files):
         out.append(image)
     return out
 
-
 def eval_model(args):
     # Model
-    disable_torch_init()
+    # disable_torch_init()
 
     model_name = get_model_name_from_path(args.model_path)
     tokenizer, model, image_processor, context_len = load_pretrained_model(
@@ -100,6 +97,17 @@ def eval_model(args):
         image_processor,
         model.config
     ).to(model.device, dtype=torch.float16)
+    
+    
+    visual_prompt_alphas = None
+    # import numpy as np
+    # alpha = Image.open("/home/caicai/vp/AlphaViP-LLaVA/playground/data/alpha.jpg").convert("RGB")
+    # visual_prompt_alpha = image_processor.preprocess(np.expand_dims(alpha, axis=-1),
+    #                                                    do_convert_rgb=False,
+    #                                                    do_normalize=False,
+    #                                                    do_rescale=False,
+    #                                                    return_tensors='pt')['pixel_values'][0]
+    # visual_prompt_alphas = torch.stack([visual_prompt_alpha], dim=0).to(model.device, dtype=torch.float16)
 
     input_ids = (
         tokenizer_image_token(prompt, tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt")
@@ -115,6 +123,7 @@ def eval_model(args):
         output_ids = model.generate(
             input_ids,
             images=images_tensor,
+            visual_prompt_alphas=visual_prompt_alphas,
             do_sample=True if args.temperature > 0 else False,
             temperature=args.temperature,
             top_p=args.top_p,
