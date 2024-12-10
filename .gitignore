@@ -34,9 +34,7 @@ ckpts*
 # Demo
 serve_images/
 
-# playground/data/
-playground/data/coco
-playground/data/v7w
+playground/data/
 images/gradio*
 tmp*
 dataset
