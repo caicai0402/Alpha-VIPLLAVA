@@ -88,6 +88,10 @@ class AlphaCLIPVisionEmbeddings(nn.Module):
                 f"Input image size ({height}*{width}) doesn't match model" f" ({self.image_size}*{self.image_size})."
             )
         target_dtype = self.patch_embedding.weight.dtype
+
+        import ipdb
+        ipdb.set_trace()
+        
         patch_embeds = self.patch_embedding(pixel_values.to(dtype=target_dtype))  # shape = [*, width, grid, grid]
         
         if alpha_pixel_values != None:

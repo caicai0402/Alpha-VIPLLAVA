@@ -96,9 +96,6 @@ def eval_model(args):
         args.conv_mode = "llava_phi_3"
     tokenizer, model, image_processor, context_len = load_pretrained_model(model_path, args.model_base, model_name)
 
-    import ipdb
-    ipdb.set_trace()
-
     questions = json.load(open(os.path.expanduser(args.question_file)))
     
     questions = get_chunk(questions, args.num_chunks, args.chunk_idx)
