@@ -101,7 +101,8 @@ def eval_model(args):
     
     visual_prompt_alphas = None
     # import numpy as np
-    # alpha = Image.open("/home/caicai/vp/AlphaViP-LLaVA/playground/data/alpha.jpg").convert("RGB")
+    # alpha = Image.open("playground/data/trash/alpha-left.jpg").convert("RGB")
+    # # alpha = Image.open("playground/data/trash/alpha-right.jpg").convert("RGB")
     # visual_prompt_alpha = image_processor.preprocess(np.expand_dims(alpha, axis=-1),
     #                                                    do_convert_rgb=False,
     #                                                    do_normalize=False,
