@@ -25,9 +25,9 @@ def fun(json_file):
     print(count)
 
 if __name__ == "__main__":
-    # extract_coco_from_mix(
-    #     "/home/caicai/vp/AlphaViP-LLaVA/playground/data/vip-llava_stage3_mix.json",
-    #     "/home/caicai/vp/AlphaViP-LLaVA/playground/data/vip-llava_stage3_coco.json"
-    # )
+    extract_coco_from_mix(
+        "/home/caicai/vp/AlphaViP-LLaVA/playground/data/vip-llava_stage3_mix.json",
+        "/home/caicai/vp/AlphaViP-LLaVA/playground/data/vip-llava_stage3_coco.json"
+    )
 
-    fun("/home/caicai/vp/AlphaViP-LLaVA/playground/data/vip-llava_stage3_coco.json")
+    # fun("/home/caicai/vp/AlphaViP-LLaVA/playground/data/vip-llava_stage3_coco.json")
