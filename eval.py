@@ -16,17 +16,17 @@ prompt = "What is shown within the pointed region?"
 image_file = "/home/caicai/vp/AlphaViP-LLaVA/playground/data/trash/man-cross-street.jpg"
 image_file = "/home/caicai/vp/AlphaViP-LLaVA/playground/data/trash/two-cats3.jpg"
 
-# image_file1 = "/home/caicai/vp/AlphaViP-LLaVA/playground/data/two-cats1.jpg"
-# image_file2 = "/home/caicai/vp/AlphaViP-LLaVA/playground/data/two-cats3.jpg"
-# alpha = generate_rgb_diff(Image.open(image_file1), Image.open(image_file2))
-# alpha.save("alpha.jpg")
+image_file1 = "/home/caicai/vp/AlphaViP-LLaVA/playground/data/trash/two-cats-1.jpg"
+image_file2 = "/home/caicai/vp/AlphaViP-LLaVA/playground/data/trash/two-cats-right.jpg"
+alpha = generate_rgb_diff(Image.open(image_file1), Image.open(image_file2))
+alpha.save("alpha-right.jpg")
 
-args = type('Args', (), {
-    "model_path": model_path,
-    "model_name": get_model_name_from_path(model_path),
-    "query": prompt,
-    "image_file": image_file,
-    "conv_mode": None, "model_base": None, "temperature": 0.2, "top_p": None, "num_beams": 1, "max_new_tokens": 512, "sep": ",",
-})()
+# args = type('Args', (), {
+#     "model_path": model_path,
+#     "model_name": get_model_name_from_path(model_path),
+#     "query": prompt,
+#     "image_file": image_file,
+#     "conv_mode": None, "model_base": None, "temperature": 0.2, "top_p": None, "num_beams": 1, "max_new_tokens": 512, "sep": ",",
+# })()
 
-eval_model(args)
+# eval_model(args)
