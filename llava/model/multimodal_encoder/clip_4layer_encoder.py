@@ -39,6 +39,7 @@ class CLIPVisionTowerMultilayer(nn.Module):
     def load_model(self, pretrained_model_name_or_path=None):
         self.image_processor = CLIPImageProcessor.from_pretrained('openai/clip-vit-large-patch14-336')
         self.vision_tower = AlphaCLIPVisionModel.from_pretrained('openai/clip-vit-large-patch14-336')
+        # self.vision_tower = CLIPVisionModel.from_pretrained('openai/clip-vit-large-patch14-336')
         
         if pretrained_model_name_or_path is not None:
             safetensor_files = glob.glob(os.path.join(pretrained_model_name_or_path, "*model*.safetensors")) + glob.glob(os.path.join(pretrained_model_name_or_path, "*model*.bin"))

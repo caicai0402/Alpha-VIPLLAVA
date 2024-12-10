@@ -18,6 +18,10 @@ import math
 from llava.visual_prompt_organizer import vip_processor
 import random
 
+import numpy as np
+import copy
+import ipdb
+
 
 def split_list(lst, n):
     """Split a list into n (roughly) equal-sized chunks"""
@@ -41,15 +45,24 @@ class CustomDataset(Dataset):
         self.data_args = args
         self.image_aspect_ratio = getattr(args, "image_aspect_ratio", None) 
 
+    def generate_rgb_diff(self, image1, image2):
+        array1 = np.array(image1.convert("RGB"))
+        array2 = np.array(image2.convert("RGB"))
+        diff_mask = np.any(array1 != array2, axis=-1).astype(np.uint8)
+        return Image.fromarray(diff_mask * 255)
+
     def __getitem__(self, index):
         line = self.questions[index]
         image_file = line["image"]
         image = Image.open(os.path.join(self.image_folder, image_file)).convert('RGB')
+        visual_prompt_alpha = self.generate_rgb_diff(image, image)
         attempts = 0
         MAX_ATTEMPTS = 100
         while True:
             try:
+                original_image = copy.deepcopy(image)
                 image, conversation = vip_processor(line, image, image_size_anchor = self.image_processor.crop_size['height'], data_args = self.data_args)
+                visual_prompt_alpha = self.generate_rgb_diff(original_image, image)
                 break
             except:
                 print('Fail in ViP image processing...')
@@ -68,8 +81,15 @@ class CustomDataset(Dataset):
 
 
         image_tensor = process_images([image], self.image_processor, self.model_config, image_aspect_ratio = self.image_aspect_ratio)[0]
+        processor = self.image_processor
+        visual_prompt_alpha = processor.preprocess(np.expand_dims(visual_prompt_alpha, axis=-1), # (500, 500) -> (500, 500, 1)
+                                                       do_convert_rgb=False,
+                                                       do_normalize=False,
+                                                       do_rescale=False,
+                                                       return_tensors='pt')['pixel_values'][0]
         input_ids = tokenizer_image_token(prompt, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors='pt')
-        return input_ids, image_tensor, gt
+        
+        return input_ids, visual_prompt_alpha, image_tensor, gt
 
     def __len__(self):
         return len(self.questions)
@@ -96,6 +116,8 @@ def eval_model(args):
         args.conv_mode = "llava_phi_3"
     tokenizer, model, image_processor, context_len = load_pretrained_model(model_path, args.model_base, model_name)
 
+    # model = model.bfloat16()
+    
     questions = json.load(open(os.path.expanduser(args.question_file)))
     
     questions = get_chunk(questions, args.num_chunks, args.chunk_idx)
@@ -118,14 +140,17 @@ def eval_model(args):
         terminators = [tokenizer.eos_token_id,  tokenizer.convert_tokens_to_ids("<|end|>")]
     else:
         terminators = [tokenizer.eos_token_id,]
-    for i, ((input_ids, image_tensor, gt), line) in tqdm(enumerate(zip(data_loader, questions)), total=len(questions)):
+    for i, ((input_ids, visual_prompt_alpha, image_tensor, gt), line) in tqdm(enumerate(zip(data_loader, questions)), total=len(questions)):
+        ipdb.set_trace()
         idx = line["id"]
 
         input_ids = input_ids.to(device='cuda', non_blocking=True)
+        visual_prompt_alpha = visual_prompt_alpha.to(device='cuda', non_blocking=True)
         with torch.inference_mode():
             output_ids = model.generate(
                 input_ids,
                 images=image_tensor.to(dtype=torch.float16, device='cuda', non_blocking=True),
+                visual_prompt_alphas=visual_prompt_alpha,
                 do_sample=True if args.temperature > 0 else False,
                 temperature=args.temperature,
                 top_p=args.top_p,

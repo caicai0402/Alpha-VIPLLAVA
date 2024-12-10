@@ -193,11 +193,12 @@ def safe_save_model_for_hf_trainer(trainer: transformers.Trainer,
     #             torch.save(weight_to_save, os.path.join(mm_projector_folder, f'{current_folder}.bin'))
     #         else:
     #             torch.save(weight_to_save, os.path.join(output_dir, f'mm_projector.bin'))
-    #     return
+        # return
 
     if trainer.deepspeed:
         torch.cuda.synchronize()
         trainer.save_model(output_dir)
+        # trainer.model.save_pretrained(output_dir, safe_serialization=True)
         return
 
     state_dict = trainer.model.state_dict()

@@ -100,15 +100,15 @@ def eval_model(args):
     
     
     visual_prompt_alphas = None
-    # import numpy as np
-    # alpha = Image.open("playground/data/trash/alpha-left.jpg").convert("RGB")
-    # # alpha = Image.open("playground/data/trash/alpha-right.jpg").convert("RGB")
-    # visual_prompt_alpha = image_processor.preprocess(np.expand_dims(alpha, axis=-1),
-    #                                                    do_convert_rgb=False,
-    #                                                    do_normalize=False,
-    #                                                    do_rescale=False,
-    #                                                    return_tensors='pt')['pixel_values'][0]
-    # visual_prompt_alphas = torch.stack([visual_prompt_alpha], dim=0).to(model.device, dtype=torch.float16)
+    import numpy as np
+    alpha = Image.open("playground/data/trash/alpha-left.jpg").convert("RGB")
+    # alpha = Image.open("playground/data/trash/alpha-right.jpg").convert("RGB")
+    visual_prompt_alpha = image_processor.preprocess(np.expand_dims(alpha, axis=-1),
+                                                       do_convert_rgb=False,
+                                                       do_normalize=False,
+                                                       do_rescale=False,
+                                                       return_tensors='pt')['pixel_values'][0]
+    visual_prompt_alphas = torch.stack([visual_prompt_alpha], dim=0).to(model.device, dtype=torch.float16)
 
     input_ids = (
         tokenizer_image_token(prompt, tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt")
