@@ -175,25 +175,25 @@ def safe_save_model_for_hf_trainer(trainer: transformers.Trainer,
                                    output_dir: str):
     """Collects the state dict and dump to disk."""
 
-    # if getattr(trainer.args, "tune_mm_mlp_adapter", False):
-    #     # Only save Adapter
-    #     keys_to_match = ['mm_projector']
-    #     if getattr(trainer.args, "use_im_start_end", False):
-    #         keys_to_match.extend(['embed_tokens', 'embed_in'])
+    if getattr(trainer.args, "tune_mm_mlp_adapter", False):
+        # Only save Adapter
+        keys_to_match = ['mm_projector']
+        if getattr(trainer.args, "use_im_start_end", False):
+            keys_to_match.extend(['embed_tokens', 'embed_in'])
 
-    #     weight_to_save = get_mm_adapter_state_maybe_zero_3(trainer.model.named_parameters(), keys_to_match)
-    #     trainer.model.config.save_pretrained(output_dir)
+        weight_to_save = get_mm_adapter_state_maybe_zero_3(trainer.model.named_parameters(), keys_to_match)
+        trainer.model.config.save_pretrained(output_dir)
 
-    #     current_folder = output_dir.split('/')[-1]
-    #     parent_folder = os.path.dirname(output_dir)
-    #     if trainer.args.local_rank == 0 or trainer.args.local_rank == -1:
-    #         if current_folder.startswith('checkpoint-'):
-    #             mm_projector_folder = os.path.join(parent_folder, "mm_projector")
-    #             os.makedirs(mm_projector_folder, exist_ok=True)
-    #             torch.save(weight_to_save, os.path.join(mm_projector_folder, f'{current_folder}.bin'))
-    #         else:
-    #             torch.save(weight_to_save, os.path.join(output_dir, f'mm_projector.bin'))
-    #     return
+        current_folder = output_dir.split('/')[-1]
+        parent_folder = os.path.dirname(output_dir)
+        if trainer.args.local_rank == 0 or trainer.args.local_rank == -1:
+            if current_folder.startswith('checkpoint-'):
+                mm_projector_folder = os.path.join(parent_folder, "mm_projector")
+                os.makedirs(mm_projector_folder, exist_ok=True)
+                torch.save(weight_to_save, os.path.join(mm_projector_folder, f'{current_folder}.bin'))
+            else:
+                torch.save(weight_to_save, os.path.join(output_dir, f'mm_projector.bin'))
+        return
 
     if trainer.deepspeed:
         torch.cuda.synchronize()
@@ -977,6 +977,9 @@ def train(attn_implementation=None):
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
     local_rank = training_args.local_rank
     compute_dtype = (torch.float16 if training_args.fp16 else (torch.bfloat16 if training_args.bf16 else torch.float32))
+    
+    import ipdb
+    ipdb.set_trace()
 
     bnb_model_from_pretrained_args = {}
     if training_args.bits in [4, 8]:
@@ -1126,6 +1129,8 @@ def train(attn_implementation=None):
         model.config.tune_vision_tower = training_args.tune_vision_tower = model_args.tune_vision_tower
         if model_args.tune_vision_tower:
             model.get_vision_tower().requires_grad_(True)
+            for p in model.get_model().mm_projector.parameters():
+                p.requires_grad = True
         
         model.config.tune_mm_mlp_adapter = training_args.tune_mm_mlp_adapter = model_args.tune_mm_mlp_adapter
         if model_args.tune_mm_mlp_adapter:
