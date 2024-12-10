@@ -43,5 +43,5 @@ deepspeed --master_port 12347 --include localhost:3 llava/train/train_mem.py \
     --dataloader_num_workers 4 \
     --lazy_preprocess True \
     --report_to wandb \
-    --tune_vision_tower True \
-    --tune_mm_mlp_adapter True
+    --tune_vision_tower True 
+    # --tune_mm_mlp_adapter True
