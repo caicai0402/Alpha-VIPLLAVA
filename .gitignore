@@ -34,7 +34,10 @@ ckpts*
 # Demo
 serve_images/
 
-playground/data/
+# playground/data/
+playground/data/coco
+playground/data/v7w
+playground/data/vip-llava_stage3_mix.json
 images/gradio*
 tmp*
 dataset
