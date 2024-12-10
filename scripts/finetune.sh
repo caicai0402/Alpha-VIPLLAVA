@@ -9,7 +9,7 @@ PROMPT_VERSION=llava_v1
 DATA_ROOT=./playground/data
 
 # python3 llava/train/train_mem.py \
-deepspeed --master_port 12347 --include localhost:3 llava/train/train_mem.py \
+deepspeed --master_port 12347 --include localhost:3,4    llava/train/train_mem.py \
     --deepspeed ./scripts/zero2.json \
     --model_name_or_path checkpoints/vip-llava-7b \
     --version $PROMPT_VERSION \
@@ -22,9 +22,8 @@ deepspeed --master_port 12347 --include localhost:3 llava/train/train_mem.py \
     --mm_use_im_patch_token False \
     --image_aspect_ratio pad \
     --bf16 True \
-    --output_dir ./checkpoints/alpha-$MODEL-6 \
+    --output_dir ./checkpoints/alpha-$MODEL-kcw-1 \
     --num_train_epochs 1 \
-    --max_steps 1 \
     --per_device_train_batch_size 16 \
     --per_device_eval_batch_size 4 \
     --gradient_accumulation_steps 1 \

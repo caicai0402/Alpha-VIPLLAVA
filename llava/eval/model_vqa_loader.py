@@ -79,9 +79,6 @@ def eval_model(args):
     elif 'phi-3' in  model_name.lower(): 
         args.conv_mode = "llava_phi_3"
     tokenizer, model, image_processor, context_len = load_pretrained_model(model_path, args.model_base, model_name)
-    model = model.bfloat16()
-    # tokenizer.pad_token = "[PAD]"
-    # tokenizer.padding_side = "left"
 
     questions = [json.loads(q) for q in open(os.path.expanduser(args.question_file), "r")]
     questions = get_chunk(questions, args.num_chunks, args.chunk_idx)

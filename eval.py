@@ -12,7 +12,7 @@ def generate_rgb_diff(image1, image2):
     return Image.fromarray(diff_mask * 255)
 
 # model_path = "checkpoints/alpha-vip-llava-7b-2"
-model_path = "checkpoints/alpha-vip-llava-7b-5"
+model_path = "checkpoints/alpha-vip-llava-7b-kcw-1"
 prompt = "What is shown within the pointed region?"
 image_file = "playground/data/trash/two-cats-left.jpg"
 # image_file = "playground/data/trash/two-cats-right.jpg"

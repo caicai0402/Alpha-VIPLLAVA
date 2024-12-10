@@ -1,0 +1,1 @@
+bash ./scripts/finetune.sh && bash ./run.sh
