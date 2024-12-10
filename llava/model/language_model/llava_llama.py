@@ -12,11 +12,14 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
+import os
+import glob
 
 from typing import List, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
+from safetensors.torch import load_file
 
 from transformers import AutoConfig, AutoModelForCausalLM, \
                          LlamaConfig, LlamaModel, LlamaForCausalLM
@@ -53,6 +56,30 @@ class LlavaLlamaForCausalLM(LlamaForCausalLM, LlavaMetaForCausalLM):
 
     def get_model(self):
         return self.model
+    
+    # @classmethod
+    # def from_pretrained(cls, pretrained_model_name_or_path, *model_args, **kwargs):
+    #     model = super().from_pretrained(pretrained_model_name_or_path, *model_args, **kwargs)
+        
+    #     safetensor_files = glob.glob(os.path.join(pretrained_model_name_or_path, "*model*.safetensors")) + glob.glob(os.path.join(pretrained_model_name_or_path, "*model*.bin"))
+    
+    #     loaded_model_weights = {}
+    #     for model_path in safetensor_files:
+    #         if model_path.endswith(".safetensors"):
+    #             loaded_weights = load_file(model_path)
+    #         else:
+    #             loaded_weights = torch.load(model_path)
+    #         loaded_model_weights.update(loaded_weights)
+                
+    #     import ipdb
+    #     ipdb.set_trace()
+        
+    #     vision_tower_weights = {k[19:]: v for k, v in loaded_model_weights.items() if "vision_tower" in k}
+    #     model.model.vision_tower.load_state_dict(vision_tower_weights, strict=False)
+        
+        
+    #     # model.load_state_dict(loaded_model_weights, strict=False)
+    #     return model
 
     def forward(
         self,

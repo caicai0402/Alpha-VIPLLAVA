@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import glob
 
 import torch
 import torch.nn as nn
+from safetensors.torch import load_file
 
 from transformers import CLIPVisionModel, CLIPImageProcessor, CLIPVisionConfig
 from .clip_vision_model import AlphaCLIPVisionModel
@@ -28,19 +31,35 @@ class CLIPVisionTowerMultilayer(nn.Module):
         self.select_layer = args.mm_vision_select_layer
         self.select_feature = getattr(args, 'mm_vision_select_feature', 'patch')
 
-        self.vision_tower = None
-
-        delay_load = False
         if not delay_load:
             self.load_model()
         else:
             self.cfg_only = CLIPVisionConfig.from_pretrained('openai/clip-vit-large-patch14-336')
 
-    def load_model(self):
+    def load_model(self, pretrained_model_name_or_path=None):
         self.image_processor = CLIPImageProcessor.from_pretrained('openai/clip-vit-large-patch14-336')
         self.vision_tower = AlphaCLIPVisionModel.from_pretrained('openai/clip-vit-large-patch14-336')
         
-        # print("\n\n\n", self.vision_tower.vision_model.embeddings.patch_embedding.weight)
+        if pretrained_model_name_or_path is not None:
+            safetensor_files = glob.glob(os.path.join(pretrained_model_name_or_path, "*model*.safetensors")) + glob.glob(os.path.join(pretrained_model_name_or_path, "*model*.bin"))
+            
+            loaded_model_weights = {}
+            for model_path in safetensor_files:
+                if model_path.endswith(".safetensors"):
+                    loaded_weights = load_file(model_path)
+                else:
+                    loaded_weights = torch.load(model_path)
+                loaded_model_weights.update(loaded_weights)
+            
+            vision_tower_weights = {}
+            for target_k in self.vision_tower.state_dict().keys():
+                for k, v in loaded_model_weights.items():
+                    if target_k in k:
+                        vision_tower_weights[target_k] = v
+            
+            self.vision_tower.load_state_dict(vision_tower_weights, strict=False)
+            print("\nload vision_tower weights successfully!\n")
+                    
         # self.vision_tower.requires_grad_(False)
         self.is_loaded = True
 
