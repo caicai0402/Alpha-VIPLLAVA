@@ -1,3 +1,4 @@
+import numpy as np
 from PIL import Image
 from io import BytesIO
 import base64
@@ -180,20 +181,26 @@ def process_image(image, image_preprocess, image_processor):
 
         # Crop the center of the image
         image = image.crop((left, top, right, bottom))
-
-        return image
-
     return image
 
 
-
-def process_images(images, image_processor, model_cfg, image_aspect_ratio = None):
+def process_images(images, image_processor, model_cfg, image_aspect_ratio = None, is_alpha=False):
     image_aspect_ratio = getattr(model_cfg, "image_aspect_ratio", None) if image_aspect_ratio is None else image_aspect_ratio
     new_images = []
     if image_aspect_ratio == 'pad':
         for image in images:
-            image = expand2square(image, tuple(int(x*255) for x in image_processor.image_mean))
-            image = image_processor.preprocess(image, return_tensors='pt')['pixel_values'][0]
+            if is_alpha:
+                image = expand2square(image, (0))
+                image = image_processor.preprocess(np.expand_dims(image, axis=-1), # (500, 500) -> (500, 500, 1)
+                    do_convert_rgb=False,
+                    do_normalize=False,
+                    do_rescale=False,
+                    return_tensors='pt')['pixel_values'][0]
+            
+            else:
+                image = expand2square(image, tuple(int(x*255) for x in image_processor.image_mean))
+                image = image_processor.preprocess(image, return_tensors='pt')['pixel_values'][0]               
+
             new_images.append(image)
     elif image_aspect_ratio == 'resize':
         size = image_processor.crop_size['height']

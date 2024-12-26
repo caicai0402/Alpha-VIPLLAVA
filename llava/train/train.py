@@ -863,6 +863,7 @@ class LazySupervisedDataset(Dataset):
                     original_image = copy.deepcopy(image)
                     image, conversation = vip_processor(sources[0], image, image_size_anchor = processor.crop_size['height'], data_args = self.data_args)
                     visual_prompt_alpha = self.generate_rgb_diff(original_image, image)
+
                 except:
                     print('Fail in ViP image processing...')
                     return self.__getitem__(random.randint(0, len(self.list_data_dict)-1))
@@ -1163,6 +1164,10 @@ def train(attn_implementation=None):
 
     data_module = make_supervised_data_module(tokenizer=tokenizer,
                                               data_args=data_args)
+
+    data_module["train_dataset"][6666]
+    raise
+
     trainer = LLaVATrainer(model=model,
                     tokenizer=tokenizer,
                     args=training_args,
