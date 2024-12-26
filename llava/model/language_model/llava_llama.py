@@ -12,11 +12,11 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-
 from typing import List, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
+from safetensors.torch import load_file
 
 from transformers import AutoConfig, AutoModelForCausalLM, \
                          LlamaConfig, LlamaModel, LlamaForCausalLM
@@ -53,7 +53,7 @@ class LlavaLlamaForCausalLM(LlamaForCausalLM, LlavaMetaForCausalLM):
 
     def get_model(self):
         return self.model
-
+    
     def forward(
         self,
         input_ids: torch.LongTensor = None,

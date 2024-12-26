@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import glob
 
 import torch
 import torch.nn as nn
+from safetensors.torch import load_file
 
 from transformers import CLIPVisionModel, CLIPImageProcessor, CLIPVisionConfig
 from .clip_vision_model import AlphaCLIPVisionModel
@@ -34,9 +37,30 @@ class CLIPVisionTowerMultilayer(nn.Module):
         else:
             self.cfg_only = CLIPVisionConfig.from_pretrained('openai/clip-vit-large-patch14-336')
 
-    def load_model(self):
+    def load_model(self, pretrained_model_name_or_path=None):
         self.image_processor = CLIPImageProcessor.from_pretrained('openai/clip-vit-large-patch14-336')
         self.vision_tower = AlphaCLIPVisionModel.from_pretrained('openai/clip-vit-large-patch14-336')
+        
+        if pretrained_model_name_or_path is not None:
+            safetensor_files = glob.glob(os.path.join(pretrained_model_name_or_path, "*model*.safetensors")) + glob.glob(os.path.join(pretrained_model_name_or_path, "*model*.bin"))
+            
+            loaded_model_weights = {}
+            for model_path in safetensor_files:
+                if model_path.endswith(".safetensors"):
+                    loaded_weights = load_file(model_path)
+                else:
+                    loaded_weights = torch.load(model_path)
+                loaded_model_weights.update(loaded_weights)
+            
+            vision_tower_weights = {}
+            for target_k in self.vision_tower.state_dict().keys():
+                for k, v in loaded_model_weights.items():
+                    if target_k in k:
+                        vision_tower_weights[target_k] = v
+            
+            self.vision_tower.load_state_dict(vision_tower_weights, strict=False)
+            print("\nload vision_tower weights successfully!\n")
+                    
         # self.vision_tower.requires_grad_(False)
         self.is_loaded = True
 
@@ -57,6 +81,8 @@ class CLIPVisionTowerMultilayer(nn.Module):
                 image_feature = self.feature_select(image_forward_out).to(image.dtype)
                 image_features.append(image_feature)
         else:
+            if visual_prompt_alphas is None:
+                visual_prompt_alphas = torch.zeros(images.size(0), 1, images.size(2), images.size(3))
             image_forward_outs = self.vision_tower(images.to(device=self.device, dtype=self.dtype), visual_prompt_alphas.to(device=self.device, dtype=self.dtype), output_hidden_states=True)
             image_features = self.feature_select(image_forward_outs).to(images.dtype)
 

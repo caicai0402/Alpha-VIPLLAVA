@@ -39,9 +39,7 @@ from PIL import Image
 import random
 from llava.visual_prompt_organizer import vip_processor, visual_prompt_config
 
-
 local_rank = None
-
 
 def rank0_print(*args):
     if local_rank == 0:
@@ -865,6 +863,7 @@ class LazySupervisedDataset(Dataset):
                     original_image = copy.deepcopy(image)
                     image, conversation = vip_processor(sources[0], image, image_size_anchor = processor.crop_size['height'], data_args = self.data_args)
                     visual_prompt_alpha = self.generate_rgb_diff(original_image, image)
+
                 except:
                     print('Fail in ViP image processing...')
                     return self.__getitem__(random.randint(0, len(self.list_data_dict)-1))
@@ -979,7 +978,7 @@ def train(attn_implementation=None):
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
     local_rank = training_args.local_rank
     compute_dtype = (torch.float16 if training_args.fp16 else (torch.bfloat16 if training_args.bf16 else torch.float32))
-
+    
     bnb_model_from_pretrained_args = {}
     if training_args.bits in [4, 8]:
         from transformers import BitsAndBytesConfig
@@ -1123,14 +1122,16 @@ def train(attn_implementation=None):
         model.config.tokenizer_padding_side = tokenizer.padding_side
         model.config.tokenizer_model_max_length = tokenizer.model_max_length
 
+        model.requires_grad_(False)
+
         model.config.tune_vision_tower = training_args.tune_vision_tower = model_args.tune_vision_tower
         if model_args.tune_vision_tower:
-            model.requires_grad_(False)
             model.get_vision_tower().requires_grad_(True)
+            for p in model.get_model().mm_projector.parameters():
+                p.requires_grad = True
         
         model.config.tune_mm_mlp_adapter = training_args.tune_mm_mlp_adapter = model_args.tune_mm_mlp_adapter
         if model_args.tune_mm_mlp_adapter:
-            model.requires_grad_(False)
             for p in model.get_model().mm_projector.parameters():
                 p.requires_grad = True
 
@@ -1163,6 +1164,10 @@ def train(attn_implementation=None):
 
     data_module = make_supervised_data_module(tokenizer=tokenizer,
                                               data_args=data_args)
+
+    data_module["train_dataset"][6666]
+    raise
+
     trainer = LLaVATrainer(model=model,
                     tokenizer=tokenizer,
                     args=training_args,

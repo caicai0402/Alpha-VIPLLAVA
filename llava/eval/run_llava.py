@@ -30,23 +30,28 @@ def image_parser(args):
     out = args.image_file.split(args.sep)
     return out
 
+def alpha_image_parser(args):
+    if not hasattr(args, 'alpha_image_file'):
+        return []
+    out = args.alpha_image_file.split(args.sep)
+    return out
 
-def load_image(image_file):
+def load_image(image_file, to_RGB=True):
     if image_file.startswith("http") or image_file.startswith("https"):
         response = requests.get(image_file)
         image = Image.open(BytesIO(response.content)).convert("RGB")
-    else:
+    elif to_RGB:
         image = Image.open(image_file).convert("RGB")
+    else:
+        image = Image.open(image_file)
     return image
 
-
-def load_images(image_files):
+def load_images(image_files, to_RGB=True):
     out = []
     for image_file in image_files:
-        image = load_image(image_file)
+        image = load_image(image_file, to_RGB)
         out.append(image)
     return out
-
 
 def eval_model(args):
     # Model
@@ -101,6 +106,18 @@ def eval_model(args):
         model.config
     ).to(model.device, dtype=torch.float16)
 
+    alpha_image_files = alpha_image_parser(args)
+    alpha_images = load_images(alpha_image_files, to_RGB=False)
+    if len(alpha_images) == 0:
+        visual_prompt_alphas_tensor = None
+    else:
+        visual_prompt_alphas_tensor = process_images(
+            alpha_images,
+            image_processor,
+            model.config,
+            is_alpha=True
+        ).to(model.device, dtype=torch.float16)
+
     input_ids = (
         tokenizer_image_token(prompt, tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt")
         .unsqueeze(0)
@@ -115,6 +132,7 @@ def eval_model(args):
         output_ids = model.generate(
             input_ids,
             images=images_tensor,
+            visual_prompt_alphas=visual_prompt_alphas_tensor,
             do_sample=True if args.temperature > 0 else False,
             temperature=args.temperature,
             top_p=args.top_p,
