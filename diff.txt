@@ -1,0 +1,12 @@
+diff --git a/llava/model/multimodal_encoder/clip_4layer_encoder.py b/llava/model/multimodal_encoder/clip_4layer_encoder.py
+index 31daf81..4076755 100644
+--- a/llava/model/multimodal_encoder/clip_4layer_encoder.py
++++ b/llava/model/multimodal_encoder/clip_4layer_encoder.py
+@@ -31,7 +31,6 @@ class CLIPVisionTowerMultilayer(nn.Module):
+         self.select_layer = args.mm_vision_select_layer
+         self.select_feature = getattr(args, 'mm_vision_select_feature', 'patch')
+ 
+-        # delay_load = False
+         if not delay_load:
+             self.load_model()
+         else:
