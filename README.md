@@ -1,5 +1,7 @@
 # Alpha-VIP-LLaVA
 
+**🚧 This project is a modified and extended version of [ViP-LLaVA](https://github.com/WisconsinAIVision/ViP-LLaVA), incorporating key ideas from both **VIP-LLaVA** and **Alpha-CLIP** to improve multi-modal alignment and instruction-following capabilities.**
+
 ![Alpha-VIP-LLaVA Architecture](assets/architecture.png)
 
 ## 0. Overview 📌
